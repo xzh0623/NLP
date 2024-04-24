@@ -16,6 +16,7 @@ data_path = 'wordsim353/combined.csv'
 data = pd.read_csv(data_path)
 
 # Calculate model similarity and compare with human ratings
+word = []
 predicted_similarities = []
 for index, row in data.iterrows():
     word1 = row['Word 1']
@@ -24,8 +25,12 @@ for index, row in data.iterrows():
     if word1 in model.key_to_index and word2 in model.key_to_index:
         model_similarity = model.similarity(word1, word2)
         predicted_similarities.append(model_similarity)
+        word.append([word1, word2])
     else:
         predicted_similarities.append(None)  # Or handle missing words appropriately
+
+for i in range(len(word)):
+    print(str(word[i]) + ":" + str(predicted_similarities[i]))
 
 # Calculate correlation
 data['predicted_similarity'] = predicted_similarities
