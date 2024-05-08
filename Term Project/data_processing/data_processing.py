@@ -8,6 +8,7 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from gensim.models import Word2Vec
 import os
+from scipy.sparse import csr_matrix
 
 def load_data(file_path):
     return pd.read_csv(file_path)
@@ -63,17 +64,23 @@ def train_word2vec(data, feature_name, data_type):
 def load_and_print_matrix_details(file_path, feature_name):
     try:
         with np.load(file_path, allow_pickle=True) as data:
-            matrix = data['features_matrix'].item()  # Change from 'arr_0' to 'features_matrix'
-            print(f"- {feature_name}")
-            print("Shape of Matrix:", matrix.shape)
-            print("Non-zero elements in Matrix:", matrix.nnz)
+            print(f"- Contents of {feature_name}:")
+            for key in data.files:
+                array = data[key]
+                if isinstance(array.item(), csr_matrix):
+                    matrix = array.item()
+                    print(f"{key}: shape = {matrix.shape}")
+                    print(f"Contents of {key}:")
+                    print(matrix)
+                else:
+                    print(f"{key}: shape = {array.shape}")
+                    print(f"Contents of {key}:")
+                    print(array)
     except FileNotFoundError:
         print(f"File not found: {file_path}")
-    except KeyError:
-        print(f"Key error in {file_path}: ensure the correct key is being accessed.")
     except Exception as e:
         print(f"An error occurred while loading {file_path}: {str(e)}")
-
+        
 def print_feature_details():
     print("Training Data:")
     load_and_print_matrix_details('Term Project/data_processing/training_data/CountVectorizerFeature_model_response.npz', 'modelResponse BoW')
@@ -85,7 +92,20 @@ def print_feature_details():
     load_and_print_matrix_details('Term Project/data_processing/test_data/CountVectorizerFeature_Resume_str.npz', 'Resume_str BoW')
     load_and_print_matrix_details('Term Project/data_processing/test_data/TfidfVectorizerFeature_Resume_str.npz', 'Resume_str TF-IDF')
 
-
+def load_matrix_and_get_value(file_path, row_index, col_index):
+    try:
+        with np.load(file_path, allow_pickle=True) as data:
+            matrix = data['features_matrix'].item()  # 假設數據存儲在 'features_matrix' 鍵下
+            value = matrix[row_index, col_index]
+            return value
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+    except KeyError:
+        print("Key error: ensure the correct key is being accessed.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return None
+    
 def main():
     training_data = load_data('Term Project/dataset/training_data.csv')
     test_data = load_data('Term Project/dataset/test_data.csv')
@@ -116,6 +136,12 @@ def main():
     train_word2vec(test_data, 'Resume_str', 'test')
     
     print_feature_details()
+    
+    file_path = 'Term Project/data_processing/training_data/CountVectorizerFeature_model_response.npz'
+    row_index = 0
+    col_index = 1229
+    value = load_matrix_and_get_value(file_path, row_index, col_index)
+    print(f"The value at position ({row_index}, {col_index}) is: {value}")
 
 if __name__ == '__main__':
     main()
