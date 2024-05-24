@@ -61,7 +61,7 @@ def train_ner_model(nlp, train_data, n_iter=10):
         losses = {}
         for example in train_data:
             nlp.update([example], drop=0.5, losses=losses, sgd=optimizer)
-        print(losses)
+        # print(losses)
 
     return nlp
 
@@ -118,7 +118,7 @@ def main():
     # 保存模型
     model_path = "HW3/ner_model"
     nlp.to_disk(model_path)
-    print(f"Model saved to {model_path}")
+    # print(f"Model saved to {model_path}")
 
     # 評估模型
     nlp = spacy.load(model_path)
