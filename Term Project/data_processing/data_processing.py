@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from gensim.models import Word2Vec
 import os
 from scipy.sparse import csr_matrix
+import joblib  # 用於保存和加載模型
 
 def load_data(file_path):
     return pd.read_csv(file_path)
@@ -29,24 +30,28 @@ def preprocess_text(text):
 
 def apply_preprocessing(data, columns):
     for column in columns:
-        data['Processed_' + column] = data[column].apply(preprocess_text)
+        data['Processed_' + column] = data[column].apply(lambda x: preprocess_text(x) if pd.notnull(x) else '')
     return data
 
 def save_processed_data(data, file_path):
     data.to_csv(file_path, index=False)
 
 def vectorize_data(data, vectorizer, feature_name, data_type):
-    features = vectorizer.fit_transform(data['Processed_' + feature_name])
     if data_type == 'training':
-        save_path = f'Term Project/data_processing/training_data/{vectorizer.__class__.__name__}Feature_{feature_name}.npz'
+        features = vectorizer.fit_transform(data['Processed_' + feature_name])
+        save_path = f'data_processing/training_data/{vectorizer.__class__.__name__}Feature_{feature_name}.npz'
+        model_path = f'data_processing/training_data/{vectorizer.__class__.__name__}Vectorizer_{feature_name}.pkl'
     else:
-        save_path = f'Term Project/data_processing/test_data/{vectorizer.__class__.__name__}Feature_{feature_name}.npz'
+        features = vectorizer.transform(data['Processed_' + feature_name])
+        save_path = f'data_processing/test_data/{vectorizer.__class__.__name__}Feature_{feature_name}.npz'
+        model_path = f'data_processing/test_data/{vectorizer.__class__.__name__}Vectorizer_{feature_name}.pkl'
 
     if not os.path.exists(os.path.dirname(save_path)):
         os.makedirs(os.path.dirname(save_path))
         
     # Specify the array name explicitly when saving
     np.savez_compressed(save_path, features_matrix=features)
+    joblib.dump(vectorizer, model_path)  # 保存向量化器
     return vectorizer, features
 
 def train_word2vec(data, feature_name, data_type):
@@ -55,9 +60,9 @@ def train_word2vec(data, feature_name, data_type):
     model.train(sentences, total_examples=len(sentences), epochs=10)
     
     if data_type == 'training':
-        save_path = f'Term Project/data_processing/training_data/word2vecModel_{feature_name}.w2v'
+        save_path = f'data_processing/training_data/word2vecModel_{feature_name}.w2v'
     else:
-        save_path = f'Term Project/data_processing/test_data/word2vecModel_{feature_name}.w2v'
+        save_path = f'data_processing/test_data/word2vecModel_{feature_name}.w2v'
 
     model.save(save_path)
 
@@ -80,17 +85,17 @@ def load_and_print_matrix_details(file_path, feature_name):
         print(f"File not found: {file_path}")
     except Exception as e:
         print(f"An error occurred while loading {file_path}: {str(e)}")
-        
+
 def print_feature_details():
     print("Training Data:")
-    load_and_print_matrix_details('Term Project/data_processing/training_data/CountVectorizerFeature_model_response.npz', 'modelResponse BoW')
-    load_and_print_matrix_details('Term Project/data_processing/training_data/CountVectorizerFeature_position_title.npz', 'positionTitle BoW')
-    load_and_print_matrix_details('Term Project/data_processing/training_data/TfidfVectorizerFeature_model_response.npz', 'modelResponse TF-IDF')
-    load_and_print_matrix_details('Term Project/data_processing/training_data/TfidfVectorizerFeature_position_title.npz', 'positionTitle TF-IDF')
+    load_and_print_matrix_details('data_processing/training_data/CountVectorizerFeature_model_response.npz', 'modelResponse BoW')
+    load_and_print_matrix_details('data_processing/training_data/CountVectorizerFeature_position_title.npz', 'positionTitle BoW')
+    load_and_print_matrix_details('data_processing/training_data/TfidfVectorizerFeature_model_response.npz', 'modelResponse TF-IDF')
+    load_and_print_matrix_details('data_processing/training_data/TfidfVectorizerFeature_position_title.npz', 'positionTitle TF-IDF')
 
     print("\nTesting Data:")
-    load_and_print_matrix_details('Term Project/data_processing/test_data/CountVectorizerFeature_Resume_str.npz', 'Resume_str BoW')
-    load_and_print_matrix_details('Term Project/data_processing/test_data/TfidfVectorizerFeature_Resume_str.npz', 'Resume_str TF-IDF')
+    load_and_print_matrix_details('data_processing/test_data/CountVectorizerFeature_Resume_str.npz', 'Resume_str BoW')
+    load_and_print_matrix_details('data_processing/test_data/TfidfVectorizerFeature_Resume_str.npz', 'Resume_str TF-IDF')
 
 def load_matrix_and_get_value(file_path, row_index, col_index):
     try:
@@ -105,10 +110,10 @@ def load_matrix_and_get_value(file_path, row_index, col_index):
     except Exception as e:
         print(f"An error occurred: {str(e)}")
         return None
-    
+
 def main():
-    training_data = load_data('Term Project/dataset/training_data.csv')
-    test_data = load_data('Term Project/dataset/test_data.csv')
+    training_data = load_data('dataset/training_data.csv')
+    test_data = load_data('dataset/test_data.csv')
     
     # Preprocess data
     training_columns = ['model_response', 'position_title']
@@ -117,19 +122,19 @@ def main():
     test_data = apply_preprocessing(test_data, test_columns)
     
     # Save processed data
-    save_processed_data(training_data, 'Term Project/data_processing/training_data/processed_trainingData.csv')
-    save_processed_data(test_data, 'Term Project/data_processing/test_data/processed_testData.csv')
+    save_processed_data(training_data, 'dataset/processed_trainingData.csv')
+    save_processed_data(test_data, 'dataset/processed_testData.csv')
     
     # Feature extraction
     vectorizer = CountVectorizer()
-    vectorize_data(training_data, vectorizer, 'model_response', 'training')
-    vectorize_data(training_data, vectorizer, 'position_title', 'training')
-    vectorize_data(test_data, vectorizer, 'Resume_str', 'test')
+    vectorizer, _ = vectorize_data(training_data, vectorizer, 'model_response', 'training')
+    vectorizer, _ = vectorize_data(training_data, vectorizer, 'position_title', 'training')
+    vectorizer, _ = vectorize_data(test_data, vectorizer, 'Resume_str', 'test')
     
     tfidf_vectorizer = TfidfVectorizer()
-    vectorize_data(training_data, tfidf_vectorizer, 'model_response', 'training')
-    vectorize_data(training_data, tfidf_vectorizer, 'position_title', 'training')
-    vectorize_data(test_data, tfidf_vectorizer, 'Resume_str', 'test')
+    tfidf_vectorizer, _ = vectorize_data(training_data, tfidf_vectorizer, 'model_response', 'training')
+    tfidf_vectorizer, _ = vectorize_data(training_data, tfidf_vectorizer, 'position_title', 'training')
+    tfidf_vectorizer, _ = vectorize_data(test_data, tfidf_vectorizer, 'Resume_str', 'test')
     
     train_word2vec(training_data, 'model_response', 'training')
     train_word2vec(training_data, 'position_title', 'training')
@@ -137,11 +142,12 @@ def main():
     
     print_feature_details()
     
-    file_path = 'Term Project/data_processing/training_data/CountVectorizerFeature_model_response.npz'
+    file_path = 'data_processing/training_data/CountVectorizerFeature_model_response.npz'
     row_index = 0
     col_index = 1229
     value = load_matrix_and_get_value(file_path, row_index, col_index)
     print(f"The value at position ({row_index}, {col_index}) is: {value}")
+
 
 if __name__ == '__main__':
     main()
