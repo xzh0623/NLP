@@ -6,7 +6,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, FastText
 import os
 from scipy.sparse import csr_matrix
 import joblib  # 用於保存和加載模型
@@ -64,7 +64,7 @@ def train_word2vec(data, feature_name, data_type):
     else:
         save_path = f'data_processing/test_data/word2vecModel_{feature_name}.w2v'
 
-    model.save(save_path)
+    model.save(save_path)   
 
 def load_and_print_matrix_details(file_path, feature_name):
     try:

@@ -115,6 +115,8 @@ def main():
     # 保存所有結果的DataFrame
     all_results = []
 
+    total_similarity = 0
+
     for job_index in range(len(job_data)):
         # 加載職位描述數據並計算相似度
         job_description = job_data.iloc[job_index]['Processed_model_response']
@@ -133,21 +135,35 @@ def main():
         sorted_resume_ids = similar_resumes.iloc[sorted_indices]['ID'].tolist()
         sorted_similarity_scores = similarity_scores[sorted_indices]
 
+        similarity = cluster_similarities[0][most_similar_cluster_index]
+        total_similarity += similarity
         # 保存前三個結果在同一行
         result_row = {
-            'Job Index': job_index + 1,
+            'Job Description Index': job_index + 1,
             'Company Name': company_name,
-            'Position Title': position_title
+            'Position Title': position_title,
+            'Most similar cluster index': most_similar_cluster_index,
+            'Most similar cluster keyword': cluster_keywords[most_similar_cluster_index],
+            'Most similarity cluster scores': similarity,
         }
         for idx in range(3):
             result_row[f'Top_{idx + 1}_Resume_ID'] = sorted_resume_ids[idx] if idx < len(sorted_resume_ids) else None
             result_row[f'Top_{idx + 1}_Similarity'] = sorted_similarity_scores[idx] if idx < len(sorted_similarity_scores) else None
         
         all_results.append(result_row)
-        
+    
+    average_similarity = total_similarity / len(job_data)
+    all_results.insert(0, {
+        'Job Description Index': "Average",
+        'Company Name': "",
+        'Position Title': "",
+        'Most similar cluster index': "",
+        'Most similarity cluster scores': average_similarity
+})
+
     # 將所有結果保存到一個CSV文件中
     results_df = pd.DataFrame(all_results)
-    output_file = 'clustering_analysis/all_sorted_results.csv'
+    output_file = 'clustering_analysis/all_sorted_results_Glove.csv'
     save_sorted_results_to_csv(results_df, output_file)
     print(f"All sorted results have been saved to {output_file}.")
 
